@@ -1,0 +1,195 @@
+---
+title: "Data Visualization 1"
+author: "Youssra Yemmas"
+date: "2023-09-28"
+output: html_document
+---
+# GGPLOT- grammar of graphics. Organize data set into a data fram and organize plot froms the variables in the data frame. Basic graph components should have datset, asethetic mappings, geoms.
+# Advanced graph components- facets, scales, statistics.
+# A graph is built by combining these components. Components are consistent across graph types- scatterplots, bar graphs, density plots, ridges plots etc
+```{r setup, include=FALSE}
+library(tidyverse)
+library(rnoaa)
+library(patchwork)
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+```
+
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728", "USW00022534", "USS0023B17S"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2021-01-01",
+    date_max = "2022-12-31") |>
+  mutate(
+    name = recode(
+      id, 
+      USW00094728 = "CentralPark_NY", 
+      USW00022534 = "Molokai_HI",
+      USS0023B17S = "Waterhole_WA"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) |>
+select(name, id, everything())
+  
+weather_df
+```
+
+
+## Same plot as last times 
+
+```{r}
+weather_df |>
+  ggplot(aes(x = tmin, y= tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    title = "Temperature plot",
+    x = "Min Daily temp Degrees C",
+    y = "Max daily temp",
+    color = "Location",
+    caption = "max vs min daily temp in three locations from 2021 and 20233; data from RNOA"
+  )
+```
+
+
+## Scales- try to modify the default mapping
+```{r}
+weather_df |>
+  filter(tmax >= 20, tmax <= 30) |>
+  ggplot(aes(x = tmin, y= tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    title = "Temperature plot",
+    x = "Min Daily temp Degrees C",
+    y = "Max daily temp",
+    color = "Location",
+    caption = "max vs min daily temp in three locations from 2021 and 2022; data from RNOA"
+  ) +
+  scale_x_continuous(
+    breaks = c(-15, 0, 15),
+    labels = c("-15 C", "0", "15")
+  ) +
+  scale_y_continuous(
+    position = "right"
+  )
+```
+
+
+what about colors ...
+
+```{r}
+weather_df |>
+  ggplot(aes(x = tmin, y= tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    title = "Temperature plot",
+    x = "Min Daily temp Degrees C",
+    y = "Max daily temp",
+    color = "Location",
+    caption = "max vs min daily temp in three locations from 2021 and 2022; data from RNOA"
+  ) + 
+  viridis::scale_color_viridis(discrete = TRUE)
+```
+
+
+## Themes
+```{r}
+weather_df |>
+  ggplot(aes(x = tmin, y= tmax, color = name)) +
+  geom_point(alpha = .5) +
+  labs(
+    title = "Temperature plot",
+    x = "Min Daily temp Degrees C",
+    y = "Max daily temp",
+    color = "Location",
+    caption = "max vs min daily temp in three locations from 2021 and 2022; data from RNOA"
+  ) + 
+  viridis::scale_color_viridis(discrete = TRUE) + 
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+
+
+## data argument ...
+
+
+```{r}
+weather_df |>
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point() + 
+  geom_smooth()
+
+
+
+nyc_weather_df =
+  weather_df |>
+  filter(name == "CentralPark_NY")
+
+hawaii_weather_df = 
+  weather_df |>
+  filter(name == "Molokai_HI")
+
+ggplot(nyc_weather_df, aes(x = dtae, y = tmax, color = name)) +
+  geom_point() +
+  geom_line(data = hawaii_weather_df)
+```
+
+
+## 'patchwork'
+
+
+```{r}
+weather_df |>
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point() +
+  facet_grid(. ~ name)
+```
+
+```{r}
+ggp_temp_scatter =
+weather_df |>
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point(alpha = .5)
+
+ggp_prcp_density =
+  weather_df |>
+  filter(prcp > 25) |>
+  ggplot(aes(x = prcp, fill = name) +
+  geom_density(alpha = .5) +
+  theme(legend.position = "bottom")
+  
+ggp_tmax_date = 
+  weather_df |>
+  ggplot(aes(x = date, y = tmax, color = name)) +
+  geom_point() +
+  geom_smooth(se = FALSE) + 
+  theme(legend.position = "bottom")
+```
+
+
+
+##data manipulation
+
+```{r}
+weather_df |>
+  mutate(
+    name = fct_relevel(name, c("Molokai_HI", "CentralPark_NY", "Waterhole_WA"))
+  ) |>
+  ggplot(aes(x = name, y = tmax)) + 
+  geom_boxplot()
+
+weather_df |>
+  mutate(
+    name = fct_reorder(name, tmax)
+  ) |>
+  ggplot(aes(x = name, y = tmax, fill = name)) +
+  geom_violin()
+
+```
+
